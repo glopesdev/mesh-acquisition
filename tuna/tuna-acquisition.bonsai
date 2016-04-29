@@ -1,0 +1,215 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WorkflowBuilder Version="2.2.1">
+  <Workflow xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:q1="clr-namespace:Bonsai.ChampalimaudHardware.Mesh;assembly=Bonsai.ChampalimaudHardware" xmlns:q2="clr-namespace:Bonsai.Dsp;assembly=Bonsai.Dsp" xmlns:q3="clr-namespace:Bonsai.Audio;assembly=Bonsai.Audio" xmlns:q4="clr-namespace:Bonsai.Shaders;assembly=Bonsai.Shaders" xmlns:q5="clr-namespace:Bonsai.Scripting;assembly=Bonsai.Scripting" xmlns="https://horizongir.org/bonsai">
+    <Nodes>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="q1:Tuna">
+          <q1:Port>51002</q1:Port>
+          <q1:TunaPort>51003</q1:TunaPort>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="MemberSelector">
+        <Selector>Source.Message</Selector>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="q2:ConvertFromArray">
+          <q2:Size>
+            <q2:Width>0</q2:Width>
+            <q2:Height>0</q2:Height>
+          </q2:Size>
+          <q2:Depth>U8</q2:Depth>
+          <q2:Channels>1</q2:Channels>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="q2:MatrixWriter">
+          <q2:Path>tuna.bin</q2:Path>
+          <q2:Suffix>None</q2:Suffix>
+          <q2:Overwrite>true</q2:Overwrite>
+          <q2:Layout>ColumnMajor</q2:Layout>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="q3:AudioCapture">
+          <q3:Frequency>44100</q3:Frequency>
+          <q3:SampleFormat>Stereo16</q3:SampleFormat>
+          <q3:BufferLength>10</q3:BufferLength>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="q2:MatrixWriter">
+          <q2:Path>audio.bin</q2:Path>
+          <q2:Suffix>None</q2:Suffix>
+          <q2:Overwrite>true</q2:Overwrite>
+          <q2:Layout>ColumnMajor</q2:Layout>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Sink">
+        <Name>TunaVisualizer</Name>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="q4:UpdateVertexBuffer">
+                <q4:MeshName>Traces</q4:MeshName>
+                <q4:DrawMode>LineStrip</q4:DrawMode>
+                <q4:Usage>DynamicDraw</q4:Usage>
+                <q4:VertexAttributes>
+                  <q4:VertexAttributeMapping>
+                    <q4:Size>2</q4:Size>
+                    <q4:Normalized>false</q4:Normalized>
+                    <q4:Type>Float</q4:Type>
+                  </q4:VertexAttributeMapping>
+                </q4:VertexAttributes>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="q2:Transpose" />
+            </Expression>
+            <Expression xsi:type="q5:PythonTransform">
+              <q5:Script>import clr
+clr.AddReference("OpenCV.Net")
+from OpenCV.Net import *
+
+idcount = 50
+buffersize = 200
+offsetscale = 0.039
+offsetshift = -0.95
+sourceMin = -1000.0
+sourceMax = 1000.0
+destMin = -2.0
+destMax = 2.0
+buffer = None
+offset = None
+xdata = None
+
+def load():
+  global buffer, offset, xdata
+  # Compute y-offsets
+  offset = Mat(idcount, buffersize, Depth.F32, 1)
+  CV.Range(offset.GetCol(0), 0, idcount)
+  CV.Repeat(offset.GetCol(0), offset)
+  CV.ConvertScale(offset, offset, offsetscale, offsetshift)
+  offset = offset.Reshape(0, 1)
+  # Compute x-coords
+  xdata = Mat(idcount, buffersize, Depth.F32, 1)
+  CV.Range(xdata.GetRow(0), -1, 1)
+  CV.Repeat(xdata.GetRow(0), xdata)
+  xdata = xdata.Reshape(0, 1)
+  # Initialize buffer
+  buffer = Mat(idcount,buffersize,Depth.F32,1)
+  buffer.SetZero()
+
+@returns(Mat)
+def process(value):
+  tunaid = value.Id % idcount
+  counter = value.Counter % buffersize
+
+  # Copy data samples to right place in buffer
+  ch1 = value.Data.GetRow(0)
+  roi = Rect(counter-2,tunaid,4,1)
+  submat = buffer.GetSubRect(roi)
+  CV.ConvertScale(ch1,submat)
+
+  # Regenerate layout buffers
+  output = Mat(2, idcount * buffersize, buffer.Depth, buffer.Channels)
+  ydata = output.GetRow(1)
+  scale = (destMax - destMin) / (sourceMax - sourceMin);
+  shift = -sourceMin * scale + destMin;
+  CV.ConvertScale(buffer.Reshape(0,1), ydata, scale, shift)
+  CV.Add(ydata, offset, ydata)
+  CV.Copy(xdata, output.GetRow(0))
+  return output
+
+def unload():
+  global buffer, offset, xdata
+  buffer = None
+  offset = None
+  xdata = None</q5:Script>
+            </Expression>
+            <Expression xsi:type="WorkflowOutput" />
+            <Expression xsi:type="WorkflowInput">
+              <Name>Source1</Name>
+            </Expression>
+          </Nodes>
+          <Edges>
+            <Edge>
+              <From>0</From>
+              <To>3</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>1</From>
+              <To>0</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>2</From>
+              <To>1</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>4</From>
+              <To>2</To>
+              <Label>Source1</Label>
+            </Edge>
+          </Edges>
+        </Workflow>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="q4:UpdateFrame" />
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="q2:Submatrix">
+          <q2:StartRow>0</q2:StartRow>
+          <q2:EndRow xsi:nil="true" />
+          <q2:StartCol>0</q2:StartCol>
+          <q2:EndCol>80</q2:EndCol>
+        </Combinator>
+      </Expression>
+    </Nodes>
+    <Edges>
+      <Edge>
+        <From>0</From>
+        <To>6</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>1</From>
+        <To>2</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>2</From>
+        <To>8</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>4</From>
+        <To>5</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>6</From>
+        <To>1</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>8</From>
+        <To>3</To>
+        <Label>Source1</Label>
+      </Edge>
+    </Edges>
+  </Workflow>
+  <ExtensionTypes>
+    <Type>Bonsai.ChampalimaudHardware.Mesh.Tuna, Bonsai.ChampalimaudHardware, Version=0.4.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Dsp.ConvertFromArray, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Dsp.MatrixWriter, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Audio.AudioCapture, Bonsai.Audio, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Shaders.UpdateVertexBuffer, Bonsai.Shaders, Version=0.12.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Dsp.Transpose, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Scripting.PythonTransform, Bonsai.Scripting, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Expressions.SinkBuilder, Bonsai.Core, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Shaders.UpdateFrame, Bonsai.Shaders, Version=0.12.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Dsp.Submatrix, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
+  </ExtensionTypes>
+</WorkflowBuilder>
