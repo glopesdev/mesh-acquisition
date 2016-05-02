@@ -210,6 +210,11 @@ def process(value):
               </Combinator>
             </Expression>
             <Expression xsi:type="Combinator">
+              <Combinator xsi:type="DelaySubscription">
+                <DueTime>PT0.1S</DueTime>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
               <Combinator xsi:type="q4:FunctionGenerator">
                 <q4:BufferLength>882</q4:BufferLength>
                 <q4:Frequency>50</q4:Frequency>
@@ -234,21 +239,26 @@ def process(value):
             </Edge>
             <Edge>
               <From>3</From>
-              <To>6</To>
+              <To>7</To>
               <Label>Source1</Label>
             </Edge>
             <Edge>
               <From>4</From>
-              <To>6</To>
-              <Label>Source2</Label>
+              <To>5</To>
+              <Label>Source1</Label>
             </Edge>
             <Edge>
               <From>5</From>
+              <To>7</To>
+              <Label>Source2</Label>
+            </Edge>
+            <Edge>
+              <From>6</From>
               <To>4</To>
               <Label>Source1</Label>
             </Edge>
             <Edge>
-              <From>6</From>
+              <From>7</From>
               <To>1</To>
               <Label>Source1</Label>
             </Edge>
@@ -304,6 +314,11 @@ def process(value):
             <Expression xsi:type="Combinator">
               <Combinator xsi:type="Concat" />
             </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="DelaySubscription">
+                <DueTime>PT0.1S</DueTime>
+              </Combinator>
+            </Expression>
           </Nodes>
           <Edges>
             <Edge>
@@ -323,8 +338,8 @@ def process(value):
             </Edge>
             <Edge>
               <From>4</From>
-              <To>6</To>
-              <Label>Source2</Label>
+              <To>7</To>
+              <Label>Source1</Label>
             </Edge>
             <Edge>
               <From>5</From>
@@ -335,6 +350,11 @@ def process(value):
               <From>6</From>
               <To>1</To>
               <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>7</From>
+              <To>6</To>
+              <Label>Source2</Label>
             </Edge>
           </Edges>
         </Workflow>
@@ -848,6 +868,7 @@ def process(value):
     <Type>Bonsai.Expressions.ExternalizedProperty`2[[System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[Bonsai.Expressions.EqualBuilder, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null]], Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Dsp.FunctionGenerator, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Dsp.ConvertScale, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Reactive.DelaySubscription, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.Concat, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Audio.AudioPlayback, Bonsai.Audio, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.Merge, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
