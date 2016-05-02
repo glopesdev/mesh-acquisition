@@ -26,7 +26,7 @@
             </Expression>
             <Expression xsi:type="Combinator">
               <Combinator xsi:type="Timer">
-                <DueTime>PT0.968S</DueTime>
+                <DueTime>PT1.015S</DueTime>
                 <Period>PT0S</Period>
               </Combinator>
             </Expression>
@@ -692,7 +692,7 @@ from System import Math
 freq = 100.0
 ids = [2,3,4,5,6,8,9,11,12,13,15,16,17]
 channelmap = dict(((x,i) for i,x in enumerate(ids)))
-maxerror = Math.Pow(3.0 * freq, 2)
+maxerror = Math.Pow(3.0 * freq, 1)
 errors = None
 
 def load():
@@ -709,7 +709,7 @@ def process(value):
   deltaT = (seconds * freq + bpress.Counter) - clock.Counter
   deltaI = interval.TotalSeconds * freq
   diff = deltaT - deltaI
-  errors.SetReal(channelmap[bpress.Id], diff * diff)
+  errors.SetReal(channelmap[bpress.Id], diff)
   return errors
 
 def unload():
@@ -724,7 +724,7 @@ from System import Math
 
 freq = 100.0
 ids = [2,3,4,5,6,8,9,11,12,13,15,16,17]
-maxerror = Math.Pow(3.0 * freq, 2)
+maxerror = Math.Pow(3.0 * freq, 1)
 
 @returns(Mat)
 def process(value):
@@ -1100,7 +1100,7 @@ def process(value):
             </Expression>
             <Expression xsi:type="Combinator">
               <Combinator xsi:type="Timer">
-                <DueTime>PT0.95S</DueTime>
+                <DueTime>PT0.45S</DueTime>
                 <Period>PT0S</Period>
               </Combinator>
             </Expression>
@@ -1183,11 +1183,27 @@ def process(value):
           </Edges>
         </Workflow>
       </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="q3:Pow">
+          <q3:Power>2</q3:Power>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="SubscribeSubject">
+        <Name>Warning</Name>
+      </Expression>
+      <Expression xsi:type="q7:CsvWriter">
+        <q7:FileName>trial_warning.csv</q7:FileName>
+        <q7:Append>false</q7:Append>
+        <q7:Overwrite>false</q7:Overwrite>
+        <q7:Suffix>Timestamp</q7:Suffix>
+        <q7:IncludeHeader>false</q7:IncludeHeader>
+        <q7:Selector />
+      </Expression>
     </Nodes>
     <Edges>
       <Edge>
         <From>0</From>
-        <To>33</To>
+        <To>36</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -1297,7 +1313,7 @@ def process(value):
       </Edge>
       <Edge>
         <From>27</From>
-        <To>32</To>
+        <To>39</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -1327,7 +1343,7 @@ def process(value):
       </Edge>
       <Edge>
         <From>33</From>
-        <To>36</To>
+        <To>37</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -1342,7 +1358,7 @@ def process(value):
       </Edge>
       <Edge>
         <From>36</From>
-        <To>37</To>
+        <To>33</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -1353,6 +1369,16 @@ def process(value):
       <Edge>
         <From>38</From>
         <To>20</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>39</From>
+        <To>32</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>40</From>
+        <To>41</To>
         <Label>Source1</Label>
       </Edge>
     </Edges>
@@ -1396,5 +1422,6 @@ def process(value):
     <Type>Bonsai.Reactive.RepeatCount, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.IO.CsvWriter, Bonsai.System, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.Switch, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Dsp.Pow, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
   </ExtensionTypes>
 </WorkflowBuilder>
