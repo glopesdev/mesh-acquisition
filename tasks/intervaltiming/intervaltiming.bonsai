@@ -362,6 +362,137 @@ def process(value):
       <Expression xsi:type="Combinator">
         <Combinator xsi:type="Merge" />
       </Expression>
+      <Expression xsi:type="Sink">
+        <Name>DrawCumulative</Name>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="WorkflowInput">
+              <Name>Source1</Name>
+            </Expression>
+            <Expression xsi:type="WorkflowOutput" />
+            <Expression xsi:type="q2:PythonTransform">
+              <q2:Script>import clr
+clr.AddReference("OpenCV.Net")
+from OpenCV.Net import *
+from System import Tuple
+
+vertx = None
+buffer = None
+buffersize = 10
+yscale = 0.0001 / 500.0
+yshift = -1
+
+@returns(Tuple[int,Mat])
+def process(value):
+  global buffer, vertx
+  if buffer is None:
+    buffer = Mat(value.Rows, buffersize, value.Depth, 1)
+    vertx = Mat(buffer.Rows * buffersize, 1, Depth.F32, 1)
+    CV.Range(vertx,-1,1)
+    buffer.SetZero()
+  else:
+    endrect = buffer.GetSubRect(Rect(1,0,buffersize-1,value.Rows))
+    startrect = buffer.GetSubRect(Rect(0,0,buffersize-1,value.Rows))
+    CV.Copy(endrect,startrect)
+  CV.Copy(value,buffer.GetCol(buffersize-1))
+
+  output = Mat(vertx.Rows,2,Depth.F32,1)
+  ydata = buffer.Reshape(0, 1)
+  CV.Copy(vertx,output.GetCol(0))
+  ycol = output.GetCol(1)
+  CV.Transpose(ydata,ycol)
+  CV.ConvertScale(ycol,ycol,yscale,yshift)
+  return Tuple.Create(buffersize,output)
+
+def unload():
+  global buffer, vertx
+  buffer = None
+  vertx = None</q2:Script>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="q1:UpdateVertexBuffer">
+                <q1:MeshName>Cumulative</q1:MeshName>
+                <q1:DrawMode>LineStrip</q1:DrawMode>
+                <q1:Usage>DynamicDraw</q1:Usage>
+                <q1:VertexAttributes>
+                  <q1:VertexAttributeMapping>
+                    <q1:Size>2</q1:Size>
+                    <q1:Normalized>false</q1:Normalized>
+                    <q1:Type>Float</q1:Type>
+                  </q1:VertexAttributeMapping>
+                </q1:VertexAttributes>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="MemberSelector">
+              <Selector>Source.Item2</Selector>
+            </Expression>
+            <Expression xsi:type="Sink">
+              <Name>UpdateUniform</Name>
+              <Workflow>
+                <Nodes>
+                  <Expression xsi:type="WorkflowInput">
+                    <Name>Source1</Name>
+                  </Expression>
+                  <Expression xsi:type="WorkflowOutput" />
+                  <Expression xsi:type="MemberSelector">
+                    <Selector>Source.Item1</Selector>
+                  </Expression>
+                  <Expression xsi:type="Combinator">
+                    <Combinator xsi:type="q1:UpdateUniform">
+                      <q1:UniformName>buffer_size</q1:UniformName>
+                      <q1:ShaderName>RenderCumulative</q1:ShaderName>
+                    </Combinator>
+                  </Expression>
+                </Nodes>
+                <Edges>
+                  <Edge>
+                    <From>0</From>
+                    <To>2</To>
+                    <Label>Source1</Label>
+                  </Edge>
+                  <Edge>
+                    <From>2</From>
+                    <To>3</To>
+                    <Label>Source1</Label>
+                  </Edge>
+                  <Edge>
+                    <From>3</From>
+                    <To>1</To>
+                    <Label>Source1</Label>
+                  </Edge>
+                </Edges>
+              </Workflow>
+            </Expression>
+          </Nodes>
+          <Edges>
+            <Edge>
+              <From>0</From>
+              <To>2</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>2</From>
+              <To>5</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>3</From>
+              <To>1</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>4</From>
+              <To>3</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>5</From>
+              <To>4</To>
+              <Label>Source1</Label>
+            </Edge>
+          </Edges>
+        </Workflow>
+      </Expression>
       <Expression xsi:type="Combinator">
         <Combinator xsi:type="SubscribeWhen" />
       </Expression>
@@ -529,6 +660,7 @@ def process(value):
       <Expression xsi:type="BehaviorSubject">
         <Name>Ready</Name>
       </Expression>
+      <Expression xsi:type="Accumulate" />
       <Expression xsi:type="SelectMany">
         <Name>Go</Name>
         <Workflow>
@@ -573,8 +705,9 @@ from OpenCV.Net import *
 from System import Math
 
 freq = 100.0
-channelmap = { 2:0, 3:1 }
-maxerror = Math.Pow(10.0 * freq, 2)
+ids = [2,3,4,5,6,8,9,11,12,13,15,16,17]
+channelmap = dict(((x,i) for i,x in enumerate(ids)))
+maxerror = Math.Pow(3.0 * freq, 2)
 errors = None
 
 def load():
@@ -605,13 +738,13 @@ from OpenCV.Net import *
 from System import Math
 
 freq = 100.0
-channelmap = { 2:0, 3:1 }
-maxerror = Math.Pow(10.0 * freq, 2)
+ids = [2,3,4,5,6,8,9,11,12,13,15,16,17]
+maxerror = Math.Pow(3.0 * freq, 2)
 
 @returns(Mat)
 def process(value):
   if value is None:
-    errors = Mat(len(channelmap), 1, Depth.F32, 1)
+    errors = Mat(len(ids), 1, Depth.F32, 1)
     errors.Set(Scalar.Real(maxerror))
     return errors
   return value
@@ -721,6 +854,137 @@ def process(value):
       <Expression xsi:type="Combinator">
         <Combinator xsi:type="Switch" />
       </Expression>
+      <Expression xsi:type="Sink">
+        <Name>DrawCurrent</Name>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="WorkflowInput">
+              <Name>Source1</Name>
+            </Expression>
+            <Expression xsi:type="WorkflowOutput" />
+            <Expression xsi:type="q2:PythonTransform">
+              <q2:Script>import clr
+clr.AddReference("OpenCV.Net")
+from OpenCV.Net import *
+from System import Tuple
+
+vertx = None
+buffer = None
+buffersize = 10
+yscale = 0.0001
+yshift = 0
+
+@returns(Tuple[int,Mat])
+def process(value):
+  global buffer, vertx
+  if buffer is None:
+    buffer = Mat(value.Rows, buffersize, value.Depth, 1)
+    vertx = Mat(buffer.Rows * buffersize, 1, Depth.F32, 1)
+    CV.Range(vertx,-1,1)
+    buffer.SetZero()
+  else:
+    endrect = buffer.GetSubRect(Rect(1,0,buffersize-1,value.Rows))
+    startrect = buffer.GetSubRect(Rect(0,0,buffersize-1,value.Rows))
+    CV.Copy(endrect,startrect)
+  CV.Copy(value,buffer.GetCol(buffersize-1))
+
+  output = Mat(vertx.Rows,2,Depth.F32,1)
+  ydata = buffer.Reshape(0, 1)
+  CV.Copy(vertx,output.GetCol(0))
+  ycol = output.GetCol(1)
+  CV.Transpose(ydata,ycol)
+  CV.ConvertScale(ycol,ycol,yscale,yshift)
+  return Tuple.Create(buffersize,output)
+
+def unload():
+  global buffer, vertx
+  buffer = None
+  vertx = None</q2:Script>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="q1:UpdateVertexBuffer">
+                <q1:MeshName>Current</q1:MeshName>
+                <q1:DrawMode>LineStrip</q1:DrawMode>
+                <q1:Usage>DynamicDraw</q1:Usage>
+                <q1:VertexAttributes>
+                  <q1:VertexAttributeMapping>
+                    <q1:Size>2</q1:Size>
+                    <q1:Normalized>false</q1:Normalized>
+                    <q1:Type>Float</q1:Type>
+                  </q1:VertexAttributeMapping>
+                </q1:VertexAttributes>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="MemberSelector">
+              <Selector>Source.Item2</Selector>
+            </Expression>
+            <Expression xsi:type="Sink">
+              <Name>UpdateUniform</Name>
+              <Workflow>
+                <Nodes>
+                  <Expression xsi:type="WorkflowInput">
+                    <Name>Source1</Name>
+                  </Expression>
+                  <Expression xsi:type="WorkflowOutput" />
+                  <Expression xsi:type="MemberSelector">
+                    <Selector>Source.Item1</Selector>
+                  </Expression>
+                  <Expression xsi:type="Combinator">
+                    <Combinator xsi:type="q1:UpdateUniform">
+                      <q1:UniformName>buffer_size</q1:UniformName>
+                      <q1:ShaderName>RenderCurrent</q1:ShaderName>
+                    </Combinator>
+                  </Expression>
+                </Nodes>
+                <Edges>
+                  <Edge>
+                    <From>0</From>
+                    <To>2</To>
+                    <Label>Source1</Label>
+                  </Edge>
+                  <Edge>
+                    <From>2</From>
+                    <To>3</To>
+                    <Label>Source1</Label>
+                  </Edge>
+                  <Edge>
+                    <From>3</From>
+                    <To>1</To>
+                    <Label>Source1</Label>
+                  </Edge>
+                </Edges>
+              </Workflow>
+            </Expression>
+          </Nodes>
+          <Edges>
+            <Edge>
+              <From>0</From>
+              <To>2</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>2</From>
+              <To>5</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>3</From>
+              <To>1</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>4</From>
+              <To>3</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>5</From>
+              <To>4</To>
+              <Label>Source1</Label>
+            </Edge>
+          </Edges>
+        </Workflow>
+      </Expression>
     </Nodes>
     <Edges>
       <Edge>
@@ -730,7 +994,7 @@ def process(value):
       </Edge>
       <Edge>
         <From>1</From>
-        <To>20</To>
+        <To>21</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -740,7 +1004,7 @@ def process(value):
       </Edge>
       <Edge>
         <From>4</From>
-        <To>19</To>
+        <To>20</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -765,7 +1029,7 @@ def process(value):
       </Edge>
       <Edge>
         <From>11</From>
-        <To>21</To>
+        <To>23</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -775,18 +1039,13 @@ def process(value):
       </Edge>
       <Edge>
         <From>13</From>
-        <To>30</To>
+        <To>32</To>
         <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>15</From>
-        <To>14</To>
-        <Label>Source2</Label>
       </Edge>
       <Edge>
         <From>16</From>
-        <To>17</To>
-        <Label>Source1</Label>
+        <To>15</To>
+        <Label>Source2</Label>
       </Edge>
       <Edge>
         <From>17</From>
@@ -794,23 +1053,23 @@ def process(value):
         <Label>Source1</Label>
       </Edge>
       <Edge>
-        <From>19</From>
-        <To>5</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>19</From>
-        <To>16</To>
+        <From>18</From>
+        <To>19</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
         <From>20</From>
-        <To>2</To>
+        <To>5</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>20</From>
+        <To>17</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
         <From>21</From>
-        <To>23</To>
+        <To>2</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -820,37 +1079,57 @@ def process(value):
       </Edge>
       <Edge>
         <From>23</From>
-        <To>22</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>24</From>
         <To>25</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
+        <From>24</From>
+        <To>15</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
         <From>25</From>
-        <To>26</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>27</From>
-        <To>29</To>
-        <Label>Source2</Label>
-      </Edge>
-      <Edge>
-        <From>28</From>
-        <To>29</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>29</From>
         <To>24</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
+        <From>26</From>
+        <To>27</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>27</From>
+        <To>28</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>28</From>
+        <To>33</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>29</From>
+        <To>31</To>
+        <Label>Source2</Label>
+      </Edge>
+      <Edge>
         <From>30</From>
+        <To>31</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>31</From>
+        <To>26</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>32</From>
         <To>10</To>
+        <Label>Source1</Label>
+      </Edge>
+      <Edge>
+        <From>33</From>
+        <To>22</To>
         <Label>Source1</Label>
       </Edge>
     </Edges>
@@ -872,6 +1151,9 @@ def process(value):
     <Type>Bonsai.Reactive.Concat, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Audio.AudioPlayback, Bonsai.Audio, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.Merge, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Shaders.UpdateVertexBuffer, Bonsai.Shaders, Version=0.11.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Shaders.UpdateUniform, Bonsai.Shaders, Version=0.11.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Expressions.SinkBuilder, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.SubscribeWhen, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Windows.Input.KeyDown, Bonsai.Windows.Input, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.GroupByBuilder, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
@@ -881,7 +1163,7 @@ def process(value):
     <Type>Bonsai.Dsp.Submatrix, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Dsp.ConvertFromArray, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Expressions.ExternalizedProperty`2[[Bonsai.IO.PathSuffix, Bonsai.System, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null],[Bonsai.Dsp.MatrixWriter, Bonsai.Dsp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null]], Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
-    <Type>Bonsai.Expressions.SinkBuilder, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
+    <Type>Bonsai.Reactive.AccumulateBuilder, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.LastOrDefault, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.Sample, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
     <Type>Bonsai.Reactive.CombineLatest, Bonsai.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null</Type>
