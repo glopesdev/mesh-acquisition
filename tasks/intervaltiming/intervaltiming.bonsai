@@ -10,7 +10,7 @@
       <Expression xsi:type="q2:PythonTransform">
         <q2:Script>from System import Random, Math, TimeSpan
 
-mean = 0.3
+mean = 0.4
 stimduration = 0.1
 minval = 0.25 + stimduration
 maxval = 0.85 + stimduration
@@ -46,7 +46,7 @@ def process(value):
             </Expression>
             <Expression xsi:type="Combinator">
               <Combinator xsi:type="Timer">
-                <DueTime>PT0.35S</DueTime>
+                <DueTime>PT2.35S</DueTime>
                 <Period>PT0S</Period>
               </Combinator>
             </Expression>
@@ -370,45 +370,6 @@ def process(value):
               <Name>Source1</Name>
             </Expression>
             <Expression xsi:type="WorkflowOutput" />
-            <Expression xsi:type="q2:PythonTransform">
-              <q2:Script>import clr
-clr.AddReference("OpenCV.Net")
-from OpenCV.Net import *
-from System import Tuple
-
-vertx = None
-buffer = None
-buffersize = 10
-yscale = 0.0001 / 500.0
-yshift = -1
-
-@returns(Tuple[int,Mat])
-def process(value):
-  global buffer, vertx
-  if buffer is None:
-    buffer = Mat(value.Rows, buffersize, value.Depth, 1)
-    vertx = Mat(buffer.Rows * buffersize, 1, Depth.F32, 1)
-    CV.Range(vertx,-1,1)
-    buffer.SetZero()
-  else:
-    endrect = buffer.GetSubRect(Rect(1,0,buffersize-1,value.Rows))
-    startrect = buffer.GetSubRect(Rect(0,0,buffersize-1,value.Rows))
-    CV.Copy(endrect,startrect)
-  CV.Copy(value,buffer.GetCol(buffersize-1))
-
-  output = Mat(vertx.Rows,2,Depth.F32,1)
-  ydata = buffer.Reshape(0, 1)
-  CV.Copy(vertx,output.GetCol(0))
-  ycol = output.GetCol(1)
-  CV.Transpose(ydata,ycol)
-  CV.ConvertScale(ycol,ycol,yscale,yshift)
-  return Tuple.Create(buffersize,output)
-
-def unload():
-  global buffer, vertx
-  buffer = None
-  vertx = None</q2:Script>
-            </Expression>
             <Expression xsi:type="Combinator">
               <Combinator xsi:type="q1:UpdateVertexBuffer">
                 <q1:MeshName>Cumulative</q1:MeshName>
@@ -463,21 +424,60 @@ def unload():
                 </Edges>
               </Workflow>
             </Expression>
+            <Expression xsi:type="q2:PythonTransform">
+              <q2:Script>import clr
+clr.AddReference("OpenCV.Net")
+from OpenCV.Net import *
+from System import Tuple
+
+vertx = None
+buffer = None
+buffersize = 10
+yscale = 0.0001 / 500.0
+yshift = -1
+
+@returns(Tuple[int,Mat])
+def process(value):
+  global buffer, vertx
+  if buffer is None:
+    buffer = Mat(value.Rows, buffersize, value.Depth, 1)
+    vertx = Mat(buffer.Rows * buffersize, 1, Depth.F32, 1)
+    CV.Range(vertx,-1,1)
+    buffer.SetZero()
+  else:
+    endrect = buffer.GetSubRect(Rect(1,0,buffersize-1,value.Rows))
+    startrect = buffer.GetSubRect(Rect(0,0,buffersize-1,value.Rows))
+    CV.Copy(endrect,startrect)
+  CV.Copy(value,buffer.GetCol(buffersize-1))
+
+  output = Mat(vertx.Rows,2,Depth.F32,1)
+  ydata = buffer.Reshape(0, 1)
+  CV.Copy(vertx,output.GetCol(0))
+  ycol = output.GetCol(1)
+  CV.Transpose(ydata,ycol)
+  CV.ConvertScale(ycol,ycol,yscale,yshift)
+  return Tuple.Create(buffersize,output)
+
+def unload():
+  global buffer, vertx
+  buffer = None
+  vertx = None</q2:Script>
+            </Expression>
           </Nodes>
           <Edges>
             <Edge>
               <From>0</From>
-              <To>2</To>
-              <Label>Source1</Label>
-            </Edge>
-            <Edge>
-              <From>2</From>
               <To>5</To>
               <Label>Source1</Label>
             </Edge>
             <Edge>
-              <From>3</From>
+              <From>2</From>
               <To>1</To>
+              <Label>Source1</Label>
+            </Edge>
+            <Edge>
+              <From>3</From>
+              <To>2</To>
               <Label>Source1</Label>
             </Edge>
             <Edge>
