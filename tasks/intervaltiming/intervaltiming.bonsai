@@ -26,7 +26,7 @@
             </Expression>
             <Expression xsi:type="Combinator">
               <Combinator xsi:type="Timer">
-                <DueTime>PT1.015S</DueTime>
+                <DueTime>PT1.155S</DueTime>
                 <Period>PT0S</Period>
               </Combinator>
             </Expression>
@@ -178,7 +178,7 @@
             <Expression xsi:type="Combinator">
               <Combinator xsi:type="q3:FunctionGenerator">
                 <q3:BufferLength>4410</q3:BufferLength>
-                <q3:Frequency>500</q3:Frequency>
+                <q3:Frequency>250</q3:Frequency>
                 <q3:Waveform>Sine</q3:Waveform>
                 <q3:PlaybackRate>100</q3:PlaybackRate>
               </Combinator>
@@ -207,7 +207,7 @@
                 <q3:BufferLength>882</q3:BufferLength>
                 <q3:Frequency>50</q3:Frequency>
                 <q3:Waveform>Sine</q3:Waveform>
-                <q3:PlaybackRate>50</q3:PlaybackRate>
+                <q3:PlaybackRate>48</q3:PlaybackRate>
               </Combinator>
             </Expression>
             <Expression xsi:type="Combinator">
@@ -296,7 +296,7 @@
                 <q3:BufferLength>882</q3:BufferLength>
                 <q3:Frequency>50</q3:Frequency>
                 <q3:Waveform>Sine</q3:Waveform>
-                <q3:PlaybackRate>50</q3:PlaybackRate>
+                <q3:PlaybackRate>48</q3:PlaybackRate>
               </Combinator>
             </Expression>
             <Expression xsi:type="Combinator">
@@ -503,6 +503,7 @@ def unload():
               <Combinator xsi:type="Merge" />
             </Expression>
             <Expression xsi:type="Condition">
+              <Name>ButtonPressed</Name>
               <Workflow>
                 <Nodes>
                   <Expression xsi:type="WorkflowInput">
@@ -973,157 +974,6 @@ def unload():
           </Edges>
         </Workflow>
       </Expression>
-      <Expression xsi:type="BehaviorSubject">
-        <Name>Warning</Name>
-      </Expression>
-      <Expression xsi:type="SubscribeSubject">
-        <Name>Warning</Name>
-      </Expression>
-      <Expression xsi:type="WindowWorkflow">
-        <Name>WarningTone</Name>
-        <Workflow>
-          <Nodes>
-            <Expression xsi:type="WorkflowInput">
-              <Name>Source1</Name>
-            </Expression>
-            <Expression xsi:type="WorkflowOutput" />
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="q3:FunctionGenerator">
-                <q3:BufferLength>4410</q3:BufferLength>
-                <q3:Frequency>250</q3:Frequency>
-                <q3:Waveform>Sine</q3:Waveform>
-                <q3:PlaybackRate>100</q3:PlaybackRate>
-              </Combinator>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="q3:ConvertScale">
-                <q3:Depth xsi:nil="true" />
-                <q3:Scale>5000</q3:Scale>
-                <q3:Shift>0</q3:Shift>
-              </Combinator>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="q3:ConvertScale">
-                <q3:Depth xsi:nil="true" />
-                <q3:Scale>0</q3:Scale>
-                <q3:Shift>0</q3:Shift>
-              </Combinator>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="DelaySubscription">
-                <DueTime>PT0.1S</DueTime>
-              </Combinator>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="q3:FunctionGenerator">
-                <q3:BufferLength>882</q3:BufferLength>
-                <q3:Frequency>50</q3:Frequency>
-                <q3:Waveform>Sine</q3:Waveform>
-                <q3:PlaybackRate>50</q3:PlaybackRate>
-              </Combinator>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="Concat" />
-            </Expression>
-          </Nodes>
-          <Edges>
-            <Edge>
-              <From>0</From>
-              <To>2</To>
-              <Label>Source1</Label>
-            </Edge>
-            <Edge>
-              <From>2</From>
-              <To>3</To>
-              <Label>Source1</Label>
-            </Edge>
-            <Edge>
-              <From>3</From>
-              <To>7</To>
-              <Label>Source1</Label>
-            </Edge>
-            <Edge>
-              <From>4</From>
-              <To>5</To>
-              <Label>Source1</Label>
-            </Edge>
-            <Edge>
-              <From>5</From>
-              <To>7</To>
-              <Label>Source2</Label>
-            </Edge>
-            <Edge>
-              <From>6</From>
-              <To>4</To>
-              <Label>Source1</Label>
-            </Edge>
-            <Edge>
-              <From>7</From>
-              <To>1</To>
-              <Label>Source1</Label>
-            </Edge>
-          </Edges>
-        </Workflow>
-      </Expression>
-      <Expression xsi:type="q5:PythonTransform">
-        <q5:Script>from System import Random, Math, TimeSpan
-
-mean = 0.55
-stimduration = 0.2
-minval = 0.25 + stimduration
-maxval = 0.85 + stimduration
-generator = Random()
-
-def exponential(generator, l):
-  u = generator.NextDouble()
-  return Math.Log(1 - u) * -l
-
-@returns(TimeSpan)
-def process(value):
-  interval = exponential(generator, mean)
-  interval = max(minval, min(interval, maxval))
-  return TimeSpan.FromSeconds(interval)
-</q5:Script>
-      </Expression>
-      <Expression xsi:type="SelectMany">
-        <Name>WarningDelay</Name>
-        <Workflow>
-          <Nodes>
-            <Expression xsi:type="WorkflowInput">
-              <Name>Source1</Name>
-            </Expression>
-            <Expression xsi:type="WorkflowOutput" />
-            <Expression xsi:type="ExternalizedTimeSpanOfTimer">
-              <MemberName>DueTime</MemberName>
-              <Name>DueTime</Name>
-              <Value>PT0S</Value>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="Timer">
-                <DueTime>PT0.45S</DueTime>
-                <Period>PT0S</Period>
-              </Combinator>
-            </Expression>
-          </Nodes>
-          <Edges>
-            <Edge>
-              <From>0</From>
-              <To>2</To>
-              <Label>Source1</Label>
-            </Edge>
-            <Edge>
-              <From>2</From>
-              <To>3</To>
-              <Label>Source1</Label>
-            </Edge>
-            <Edge>
-              <From>3</From>
-              <To>1</To>
-              <Label>Source1</Label>
-            </Edge>
-          </Edges>
-        </Workflow>
-      </Expression>
       <Expression xsi:type="SelectMany">
         <Name>StartTrial</Name>
         <Workflow>
@@ -1188,22 +1038,11 @@ def process(value):
           <q3:Power>2</q3:Power>
         </Combinator>
       </Expression>
-      <Expression xsi:type="SubscribeSubject">
-        <Name>Warning</Name>
-      </Expression>
-      <Expression xsi:type="q7:CsvWriter">
-        <q7:FileName>trial_warning.csv</q7:FileName>
-        <q7:Append>false</q7:Append>
-        <q7:Overwrite>false</q7:Overwrite>
-        <q7:Suffix>Timestamp</q7:Suffix>
-        <q7:IncludeHeader>false</q7:IncludeHeader>
-        <q7:Selector />
-      </Expression>
     </Nodes>
     <Edges>
       <Edge>
         <From>0</From>
-        <To>36</To>
+        <To>33</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -1234,7 +1073,7 @@ def process(value):
       <Edge>
         <From>8</From>
         <To>12</To>
-        <Label>Source2</Label>
+        <Label>Source1</Label>
       </Edge>
       <Edge>
         <From>10</From>
@@ -1244,7 +1083,7 @@ def process(value):
       <Edge>
         <From>11</From>
         <To>12</To>
-        <Label>Source3</Label>
+        <Label>Source2</Label>
       </Edge>
       <Edge>
         <From>12</From>
@@ -1313,7 +1152,7 @@ def process(value):
       </Edge>
       <Edge>
         <From>27</From>
-        <To>39</To>
+        <To>34</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
@@ -1343,42 +1182,12 @@ def process(value):
       </Edge>
       <Edge>
         <From>33</From>
-        <To>37</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>34</From>
-        <To>35</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>35</From>
-        <To>12</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>36</From>
-        <To>33</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>37</From>
-        <To>38</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>38</From>
         <To>20</To>
         <Label>Source1</Label>
       </Edge>
       <Edge>
-        <From>39</From>
+        <From>34</From>
         <To>32</To>
-        <Label>Source1</Label>
-      </Edge>
-      <Edge>
-        <From>40</From>
-        <To>41</To>
         <Label>Source1</Label>
       </Edge>
     </Edges>
